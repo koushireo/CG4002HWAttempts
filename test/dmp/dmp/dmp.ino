@@ -20,7 +20,9 @@ double accelX, accelY, accelZ, accelXError = 0, accelYError = 0, accelZError = 0
 int8_t charAccelX, charAccelY, charAccelZ, charAngleX, charAngleY, charAngleZ;
 int8_t prevCharAccelX, prevCharAccelY, prevCharAccelZ, prevCharAngleX, prevCharAngleY, prevCharAngleZ;
 byte state; //0 = rest 1 = change position 2 = dance
-
+float cx, sx, cy, sy, cz, sz;
+float a, b, c, d, e, f, g, h, i;
+float tX, tY, tZ;
 void mpuRead(double angleXBaseline, double angleYBaseline, double angleZBaseline, double accelXError, double accelYError, double accelZError) {
     mpu.resetFIFO();
     fifoCount = mpu.getFIFOCount();
@@ -33,14 +35,13 @@ void mpuRead(double angleXBaseline, double angleYBaseline, double angleZBaseline
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-    angleX = ypr[2] * 180 / M_PI - angleXBaseline;
-    angleY = ypr[1] * 180 / M_PI - angleYBaseline;
-    angleZ = ypr[0] * 180 / M_PI - angleZBaseline;
+    angleX = ypr[2] * 180 / M_PI;
+    angleY = ypr[1] * 180 / M_PI;
+    angleZ = ypr[0] * 180 / M_PI;
     I2Cdev::readBytes(IMUAddress, 0x3B, 6, buffer);
-    accelX = (buffer[0] << 8 | buffer[1]) / 16384.0 - accelXError;
-    accelY = (buffer[2] << 8 | buffer[3]) / 16384.0 - accelYError;
-    accelZ = (buffer[4] << 8 | buffer[5]) / 16384.0 - accelZError;  
-  
+    accelX = (buffer[0] << 8 | buffer[1]) / 16384.0;
+    accelY = (buffer[2] << 8 | buffer[3]) / 16384.0;
+    accelZ = (buffer[4] << 8 | buffer[5]) / 16384.0;
 }
 
 void doubleToCharConversion() {
@@ -71,7 +72,7 @@ void doubleToCharConversion() {
 }
 
 void calibration() {
-  for (int i = 0; i < 200; i += 1) {
+  for (int i = 0; i < 500; i += 1) {
     mpuRead(0, 0, 0, 0, 0, 0);
     angleXBaseline += angleX;
     angleYBaseline += angleY;
@@ -80,12 +81,12 @@ void calibration() {
     accelYError += accelY;
     accelZError += accelZ;
   }
-  angleXBaseline /= 200;
-  angleYBaseline /= 200;
-  angleZBaseline /= 200;
-  accelXError /= 200;
-  accelYError /= 200;
-  accelZError /= 200;
+  angleXBaseline /= 500;
+  angleYBaseline /= 500;
+  angleZBaseline /= 500;
+  accelXError /= 500;
+  accelYError /= 500;
+  accelZError /= 500;
 }
 
 void stateChecker() {
@@ -155,18 +156,36 @@ void loop() {
   prevCharAngleX = charAngleX;
   prevCharAngleY = charAngleY;
   prevCharAngleZ = charAngleZ;
+  cx = cos(angleX + 180);
+  sx = sin(angleX + 180);
+  cy = cos(angleY + 180);
+  sy = sin(angleY + 180);
+  cz = cos(angleZ + 180);
+  sz = sin(angleZ + 180);
+  a = cy*cz;
+  b = -1 * cy * sz;
+  c = sy;
+  d = sx*sy*cz + cx*sz;
+  e = -1 * sx*sy*sz + cx*cz;
+  f = -1 * sx*cy;
+  g = -1 * cx*sy*cz + sx*sz;
+  h = cx*sy*sz+ sx*cz;
+  i = cx*cy;
+  tX = a * accelX + b * accelY + c * accelZ;
+  tY = d * accelX + e * accelY + f * accelZ;
+  tZ = g * accelX + h * accelY + i * accelZ;
   Serial.print("ypr\t");
-  Serial.print(charAngleX);
+  Serial.print(tX);
   Serial.print("\t");
-  Serial.print(charAngleY);
+  Serial.print(tY);
   Serial.print("\t");
-  Serial.print(charAngleZ);
+  Serial.print(tZ);
   Serial.print("\t");
-  Serial.print(charAccelX);
+  Serial.print(accelX);
   Serial.print("\t");
-  Serial.print(charAccelY);
+  Serial.print(accelY);
   Serial.print("\t");
-  Serial.println(charAccelZ);
+  Serial.println(accelZ);
   Serial.println(state);
   
 }
