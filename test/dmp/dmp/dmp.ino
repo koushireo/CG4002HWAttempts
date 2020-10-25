@@ -272,7 +272,7 @@ void loop() {
   sy = sin(angleY);
   cz = cos(angleZ);
   sz = sin(angleZ);
-  rotYZX();
+  rotXYZ();
   tX = a * accelX + b * accelY + c * accelZ;
   tY = d * accelX + e * accelY + f * accelZ;
   tZ = g * accelX + h * accelY + i * accelZ;
